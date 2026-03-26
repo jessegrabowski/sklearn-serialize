@@ -60,7 +60,7 @@ def nested_equal_list(v1, v2):
         return False
     if len(v1) != len(v2):
         return False
-    return all(nested_equal(item1, item2) for item1, item2 in zip(v1, v2))
+    return all(nested_equal(item1, item2) for item1, item2 in zip(v1, v2, strict=False))
 
 
 @nested_equal.register(tuple)
@@ -69,7 +69,7 @@ def nested_equal_tuple(v1, v2):
         return False
     if len(v1) != len(v2):
         return False
-    return all(nested_equal(item1, item2) for item1, item2 in zip(v1, v2))
+    return all(nested_equal(item1, item2) for item1, item2 in zip(v1, v2, strict=False))
 
 
 @nested_equal.register(dict)
@@ -132,13 +132,13 @@ def nested_equal_date(v1, v2):
 def nested_equal_iterable(v1, v2):
     if not isinstance(v2, Iterable):
         return False
-    if isinstance(v1, (str, bytes)) or isinstance(v2, (str, bytes)):
+    if isinstance(v1, str | bytes) or isinstance(v2, str | bytes):
         return v1 == v2
     if isinstance(v1, dict) or isinstance(v2, dict):
         return False  # Dicts are already handled
     if len(v1) != len(v2):
         return False
-    return all(nested_equal(item1, item2) for item1, item2 in zip(v1, v2))
+    return all(nested_equal(item1, item2) for item1, item2 in zip(v1, v2, strict=False))
 
 
 @nested_equal.register(sparse.spmatrix)
@@ -159,11 +159,7 @@ def nested_equal_sparse(v1, v2):
         )
 
     elif v1.getformat() == "coo":
-        return (
-            np.array_equal(v1.data, v2.data)
-            and np.array_equal(v1.row, v2.row)
-            and np.array_equal(v1.col, v2.col)
-        )
+        return np.array_equal(v1.data, v2.data) and np.array_equal(v1.row, v2.row) and np.array_equal(v1.col, v2.col)
     else:
         # For other formats, compare the dense representation
         return np.array_equal(v1.toarray(), v2.toarray())

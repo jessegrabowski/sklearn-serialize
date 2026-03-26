@@ -14,12 +14,7 @@ from sklearn.pipeline import FeatureUnion, Pipeline
 
 def isnamedtuple(obj):
     """Heuristic check if an object is a namedtuple."""
-    return (
-        isinstance(obj, tuple)
-        and hasattr(obj, "_fields")
-        and hasattr(obj, "_asdict")
-        and callable(obj._asdict)
-    )
+    return isinstance(obj, tuple) and hasattr(obj, "_fields") and hasattr(obj, "_asdict") and callable(obj._asdict)
 
 
 @singledispatch
@@ -234,9 +229,7 @@ def serialize_sklearn_estimator(estimator):
     params = estimator.get_params(deep=False)
 
     attributes = {
-        attr_name: attr_value
-        for attr_name, attr_value in estimator.__dict__.items()
-        if not callable(attr_value)
+        attr_name: attr_value for attr_name, attr_value in estimator.__dict__.items() if not callable(attr_value)
     }
 
     data = {
