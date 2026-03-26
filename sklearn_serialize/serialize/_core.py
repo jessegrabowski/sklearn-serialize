@@ -2,6 +2,7 @@ import datetime
 import json
 from collections import OrderedDict, namedtuple
 from functools import singledispatch
+from pathlib import Path
 
 # Modules from which classes may be deserialized. Prevents arbitrary code
 # execution when loading JSON from untrusted sources. Call trust_module() to
@@ -28,6 +29,25 @@ def _check_trusted(module_name: str) -> None:
             f"Refusing to deserialize class from untrusted module '{module_name}'. "
             f"Call trust_module('{module_name.split('.')[0]}') to allow it."
         )
+
+
+def _load_rc_file() -> None:
+    rc_path = Path.home() / ".sklearnserialize"
+    if not rc_path.exists():
+        return
+    section = None
+    with open(rc_path) as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if line.startswith("[") and line.endswith("]"):
+                section = line[1:-1]
+            elif section == "trusted_modules":
+                trust_module(line)
+
+
+_load_rc_file()
 
 
 def isnamedtuple(obj):

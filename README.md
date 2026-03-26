@@ -40,3 +40,13 @@ The argument is a module prefix — `"my_package"` covers `my_package.transforme
 `json_to_data` will raise `ValueError` if it encounters a class from an untrusted module. This prevents arbitrary code execution when deserializing JSON from untrusted sources. Only call `json_to_data` on JSON you produced yourself or received from a trusted source.
 
 The default trusted set covers `sklearn`, `numpy`, `scipy`, `pandas`, `builtins`, and `sklearn_serialize`.
+
+To trust modules globally without calling `trust_module` in every script, create `~/.sklearnserialize`:
+
+```ini
+[trusted_modules]
+my_package
+polars
+```
+
+One module prefix per line. Blank lines and lines starting with `#` are ignored. This file is loaded once at import time.
