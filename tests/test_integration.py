@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import pytest
+from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.compose import ColumnTransformer, make_column_selector
 from sklearn.datasets import make_classification, make_regression
 from sklearn.decomposition import PCA
@@ -18,6 +19,21 @@ from sklearn.preprocessing import (
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
 from sklearn_serialize.serialize import data_to_json, json_to_data
+
+
+class ClampTransformer(BaseEstimator, TransformerMixin):
+    """Clips values to [min_val, max_val], learned from training data."""
+
+    def __init__(self, quantile: float = 0.05):
+        self.quantile = quantile
+
+    def fit(self, X, y=None):
+        self.min_ = np.quantile(X, self.quantile, axis=0)
+        self.max_ = np.quantile(X, 1 - self.quantile, axis=0)
+        return self
+
+    def transform(self, X):
+        return np.clip(X, self.min_, self.max_)
 
 
 def roundtrip(estimator):
@@ -294,6 +310,16 @@ def test_feature_union_parallel_transforms(numeric_X):
         ]
     )
     assert_estimator_roundtrip(fu, numeric_X)
+
+
+def test_custom_estimator_standalone(numeric_X):
+    assert_estimator_roundtrip(ClampTransformer(quantile=0.1), numeric_X)
+
+
+def test_custom_estimator_in_pipeline(numeric_X, regression_Xy):
+    _, y = regression_Xy
+    pipeline = Pipeline([("clamp", ClampTransformer(quantile=0.1)), ("model", Ridge(alpha=1.0))])
+    assert_estimator_roundtrip(pipeline, numeric_X, y)
 
 
 def test_feature_union_in_pipeline(numeric_X, regression_Xy):
