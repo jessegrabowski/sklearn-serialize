@@ -126,7 +126,7 @@ def serialize_type(data):
     if issubclass(data, np.generic):
         return {"py/numpy.type": data.__name__}
     else:
-        raise TypeError(f"Type {type(data)} not data-serializable")
+        return {"py/type": {"module": data.__module__, "qualname": data.__qualname__}}
 
 
 @serialize.register(bytes)
@@ -198,8 +198,11 @@ def serialize_sparse_matrix(data):
 
 @serialize.register(pd.Series)
 def serialize_pandas_series(data):
-    json_str = data.to_json(orient="split", date_format="iso")
-    return {"py/pandas.Series": json_str, "name": data.name}
+    # Strip the name before calling to_json — pandas embeds it in the JSON string,
+    # and complex names (tuples, numpy scalars) cannot survive that round-trip.
+    # The name is stored separately and restored via our own serialize/restore.
+    json_str = data.rename(None).to_json(orient="split", date_format="iso")
+    return {"py/pandas.Series": json_str, "name": serialize(data.name)}
 
 
 @serialize.register(pd.DataFrame)
@@ -355,7 +358,18 @@ def restore_numpy_float(dct):
 
 def restore_numpy_type(dct):
     type_name = dct["py/numpy.type"]
+    # Abstract numpy types (e.g. np.number, np.integer) aren't dtype-constructable;
+    # fall back to getattr(np, name) which works for all np.generic subclasses.
+    numpy_type = getattr(np, type_name, None)
+    if numpy_type is not None and isinstance(numpy_type, type) and issubclass(numpy_type, np.generic):
+        return numpy_type
     return np.dtype(type_name).type
+
+
+def restore_type(dct):
+    data = dct["py/type"]
+    module = __import__(data["module"], fromlist=[data["qualname"]])
+    return getattr(module, data["qualname"])
 
 
 def restore_bytes(dct):
@@ -523,6 +537,7 @@ RESTORE_FUNCTION_FACTORY = {
     "py/numpy.int": restore_numpy_int,
     "py/numpy.float": restore_numpy_float,
     "py/numpy.type": restore_numpy_type,
+    "py/type": restore_type,
     "py/float": restore_python_float,
     "py/datetime.datetime": restore_datetime,
     "py/datetime.date": restore_date,
