@@ -1,0 +1,54 @@
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[project]
+name = "sklearn-serialize"
+description = "JSON serialization for scikit-learn models"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Jesse Grabowski", email = "jessegrabowski@gmail.com" },
+]
+dynamic = ["version"]
+requires-python = ">=3.12"
+dependencies = [
+    "numpy",
+    "pandas",
+    "scipy",
+    "scikit-learn",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "pre-commit",
+]
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.targets.wheel]
+packages = ["sklearn_serialize"]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+]
+ignore = [
+    "B006",  # mutable default args — too noisy in ML code
+    "B007",  # unused loop variable
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=sklearn_serialize --cov-report=term-missing"
