@@ -208,7 +208,7 @@ def restore_date(dct):
 # Populated by the type-specific dispatch modules on import.
 RESTORE_FUNCTION_FACTORY: dict = {
     "py/float": restore_python_float,
-    "py/dict": lambda dct: dict(dct["py/dict"]),
+    "py/dict": lambda dct: {restore(k): restore(v) for k, v in dct["py/dict"]},
     "py/tuple": lambda dct: tuple(dct["py/tuple"]),
     "py/set": lambda dct: set(dct["py/set"]),
     "py/frozenset": restore_frozenset,
