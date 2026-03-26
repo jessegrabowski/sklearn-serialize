@@ -6,7 +6,7 @@ from ._core import RESTORE_FUNCTION_FACTORY, serialize
 
 
 @serialize.register(pd.Series)
-def serialize_pandas_series(data):
+def serialize_pandas_series(data: pd.Series) -> dict:
     # Strip the name before calling to_json — pandas embeds it in the JSON string,
     # and complex names (tuples, numpy scalars) cannot survive that round-trip.
     # The name is stored separately and restored via our own serialize/restore.
@@ -15,7 +15,7 @@ def serialize_pandas_series(data):
 
 
 @serialize.register(pd.DataFrame)
-def serialize_pandas_dataframe(data):
+def serialize_pandas_dataframe(data: pd.DataFrame) -> dict:
     json_str = data.to_json(orient="split", date_format="iso")
     categorical_cols = data.select_dtypes(include=["category"]).columns.tolist()
     categorical_attrs = {
@@ -35,14 +35,14 @@ def serialize_pandas_dataframe(data):
     }
 
 
-def restore_pandas_series(dct):
+def restore_pandas_series(dct: dict) -> pd.Series:
     json_str = dct["py/pandas.Series"]
     series = pd.read_json(StringIO(json_str), typ="series", orient="split")
     series.name = dct.get("name", None)
     return series
 
 
-def restore_pandas_dataframe(dct):
+def restore_pandas_dataframe(dct: dict) -> pd.DataFrame:
     json_str = dct["py/pandas.DataFrame"]
     df = pd.read_json(StringIO(json_str), orient="split", convert_dates=dct.get("date_columns", []))
     categorical_cols = dct.get("categorical_columns", [])

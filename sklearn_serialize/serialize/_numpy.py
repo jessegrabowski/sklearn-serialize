@@ -1,12 +1,14 @@
+from typing import Any
+
 import numpy as np
 
 from ._core import RESTORE_FUNCTION_FACTORY, _check_trusted, restore, serialize
 
 
 @serialize.register(np.ndarray)
-def serialize_ndarray(data):
+def serialize_ndarray(data: np.ndarray) -> dict:
     if np.issubdtype(data.dtype, np.datetime64):
-        # Convert datetime64 elements to ISO format strings
+        # datetime64 has no JSON representation; ISO strings round-trip losslessly
         values = data.astype(str).tolist()
     elif data.dtype == "object":
         values = [serialize(val) for val in data.tolist()]
@@ -16,12 +18,12 @@ def serialize_ndarray(data):
 
 
 @serialize.register(np.integer)
-def serialize_np_integer(data):
+def serialize_np_integer(data: np.integer) -> dict:
     return {"py/numpy.int": int(data), "dtype": type(data).__name__}
 
 
 @serialize.register(np.floating)
-def serialize_np_float(data):
+def serialize_np_float(data: np.floating) -> dict:
     if np.isnan(data):
         return {"py/numpy.float": "nan", "dtype": type(data).__name__}
     elif np.isinf(data):
@@ -31,7 +33,7 @@ def serialize_np_float(data):
 
 
 @serialize.register(type)
-def serialize_type(data):
+def serialize_type(data: type) -> dict:
     if issubclass(data, np.generic):
         return {"py/numpy.type": data.__name__}
     else:
@@ -39,11 +41,11 @@ def serialize_type(data):
 
 
 @serialize.register(np.datetime64)
-def serialize_np_datetime64(data):
+def serialize_np_datetime64(data: np.datetime64) -> dict:
     return {"py/numpy.datetime64": str(data)}
 
 
-def restore_ndarray(dct):
+def restore_ndarray(dct: dict) -> np.ndarray:
     data = dct["py/numpy.ndarray"]
     values = data["values"]
     dtype_str = data["dtype"]
@@ -56,12 +58,12 @@ def restore_ndarray(dct):
     return np.array(restored_values, dtype=dtype_str)
 
 
-def restore_numpy_int(dct):
+def restore_numpy_int(dct: dict) -> np.integer:
     dtype = getattr(np, dct.get("dtype", "int64"))
     return dtype(dct["py/numpy.int"])
 
 
-def restore_numpy_float(dct):
+def restore_numpy_float(dct: dict) -> np.floating:
     value = dct["py/numpy.float"]
     dtype = np.dtype(dct.get("dtype", "float64"))
     if value == "nan":
@@ -74,7 +76,7 @@ def restore_numpy_float(dct):
         return dtype.type(float.fromhex(value))
 
 
-def restore_numpy_type(dct):
+def restore_numpy_type(dct: dict) -> type:
     type_name = dct["py/numpy.type"]
     # Abstract numpy types (e.g. np.number, np.integer) aren't dtype-constructable;
     # fall back to getattr(np, name) which works for all np.generic subclasses.
@@ -84,14 +86,14 @@ def restore_numpy_type(dct):
     return np.dtype(type_name).type
 
 
-def restore_type(dct):
+def restore_type(dct: dict) -> Any:
     data = dct["py/type"]
     _check_trusted(data["module"])
     module = __import__(data["module"], fromlist=[data["qualname"]])
     return getattr(module, data["qualname"])
 
 
-def restore_np_datetime64(dct):
+def restore_np_datetime64(dct: dict) -> np.datetime64:
     return np.datetime64(dct["py/numpy.datetime64"])
 
 

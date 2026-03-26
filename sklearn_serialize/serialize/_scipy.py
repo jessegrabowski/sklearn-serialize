@@ -1,13 +1,22 @@
 from scipy import sparse
+from scipy.sparse import coo_matrix, csc_matrix, csr_matrix, dok_matrix, lil_matrix
 
 from ._core import RESTORE_FUNCTION_FACTORY, restore, serialize
 
 # Register most-specific subclasses before the spmatrix base to ensure
 # singledispatch picks the right handler via MRO.
 
+_SPARSE_CONSTRUCTORS: dict[str, type] = {
+    "csr": csr_matrix,
+    "csc": csc_matrix,
+    "coo": coo_matrix,
+    "lil": lil_matrix,
+    "dok": dok_matrix,
+}
+
 
 @serialize.register(sparse.coo_matrix)
-def serialize_sparse_coo_matrix(data):
+def serialize_sparse_coo_matrix(data: sparse.coo_matrix) -> dict:
     return {
         "py/scipy.sparse": {
             "format": data.getformat(),
@@ -21,7 +30,7 @@ def serialize_sparse_coo_matrix(data):
 
 @serialize.register(sparse.lil_matrix)
 @serialize.register(sparse.dok_matrix)
-def serialize_sparse_dense_matrix(data):
+def serialize_sparse_dense_matrix(data: sparse.spmatrix) -> dict:
     # lil and dok have no .indices/.indptr; serialize via dense roundtrip
     return {
         "py/scipy.sparse": {
@@ -33,7 +42,7 @@ def serialize_sparse_dense_matrix(data):
 
 
 @serialize.register(sparse.spmatrix)
-def serialize_sparse_matrix(data):
+def serialize_sparse_matrix(data: sparse.spmatrix) -> dict:
     return {
         "py/scipy.sparse": {
             "data": serialize(data.data),
@@ -45,35 +54,23 @@ def serialize_sparse_matrix(data):
     }
 
 
-def restore_sparse_matrix(dct):
-    from scipy.sparse import coo_matrix, csc_matrix, csr_matrix, dok_matrix, lil_matrix
-
-    sparse_format_factory = {
-        "csr": csr_matrix,
-        "csc": csc_matrix,
-        "coo": coo_matrix,
-        "lil": lil_matrix,
-        "dok": dok_matrix,
-    }
+def restore_sparse_matrix(dct: dict) -> sparse.spmatrix:
     data = dct["py/scipy.sparse"]
-    format = data["format"]
+    fmt = data["format"]
     shape = tuple(data["shape"])
-    constructor = sparse_format_factory.get(format)
-
-    if format in ["csr", "csc"]:
-        matrix = constructor(
+    constructor = _SPARSE_CONSTRUCTORS[fmt]
+    if fmt in ["csr", "csc"]:
+        return constructor(
             (restore(data["data"]), restore(data["indices"]), restore(data["indptr"])),
             shape=shape,
         )
-    elif format == "coo":
-        matrix = constructor(
+    elif fmt == "coo":
+        return constructor(
             (restore(data["data"]), (restore(data["row"]), restore(data["col"]))),
             shape=shape,
         )
     else:
-        matrix = constructor(restore(data["dense"]), shape=shape)
-
-    return matrix
+        return constructor(restore(data["dense"]), shape=shape)
 
 
 RESTORE_FUNCTION_FACTORY["py/scipy.sparse"] = restore_sparse_matrix
