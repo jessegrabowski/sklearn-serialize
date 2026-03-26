@@ -1,9 +1,12 @@
 import base64
 import datetime
 import json
+import math
 from collections import OrderedDict, namedtuple
+from collections.abc import Callable
 from functools import singledispatch
 from pathlib import Path
+from typing import Any
 
 # Modules from which classes may be deserialized. Prevents arbitrary code
 # execution when loading JSON from untrusted sources. Call trust_module() to
@@ -51,45 +54,49 @@ def _load_rc_file() -> None:
 _load_rc_file()
 
 
-def isnamedtuple(obj):
-    """Heuristic check if an object is a namedtuple."""
+def isnamedtuple(obj: Any) -> bool:
     return isinstance(obj, tuple) and hasattr(obj, "_fields") and hasattr(obj, "_asdict") and callable(obj._asdict)
 
 
 @singledispatch
-def serialize(data):
+def serialize(data: Any) -> Any:
+    """Convert a Python object to a JSON-serializable form.
+
+    Uses tagged dict encoding ({"py/type": ...}) for types JSON cannot represent
+    natively. Registered handlers cover Python builtins, NumPy, SciPy, pandas,
+    and sklearn. Additional types can be supported by registering new handlers
+    via @serialize.register(MyType).
+    """
     raise TypeError(f"Type {type(data)} not data-serializable")
 
 
 @serialize.register(type(None))
-def serialize_none(data):
+def serialize_none(data: None) -> None:
     return data
 
 
 @serialize.register(bool)
-def serialize_bool(data):
+def serialize_bool(data: bool) -> bool:
     return data
 
 
 @serialize.register(int)
-def serialize_int(data):
+def serialize_int(data: int) -> int:
     return data
 
 
 @serialize.register(str)
-def serialize_str(data):
+def serialize_str(data: str) -> str:
     return data
 
 
 @serialize.register(list)
-def serialize_list(data):
+def serialize_list(data: list) -> list:
     return [serialize(val) for val in data]
 
 
 @serialize.register(float)
-def serialize_float(data):
-    import math
-
+def serialize_float(data: float) -> float | dict:
     if math.isnan(data):
         return {"py/float": "nan"}
     elif math.isinf(data):
@@ -99,12 +106,12 @@ def serialize_float(data):
 
 
 @serialize.register(OrderedDict)
-def serialize_ordereddict(data):
+def serialize_ordereddict(data: OrderedDict) -> dict:
     return {"py/collections.OrderedDict": [[serialize(k), serialize(v)] for k, v in data.items()]}
 
 
 @serialize.register(tuple)
-def serialize_tuple(data):
+def serialize_tuple(data: tuple) -> dict:
     if isnamedtuple(data):
         return {
             "py/collections.namedtuple": {
@@ -118,7 +125,7 @@ def serialize_tuple(data):
 
 
 @serialize.register(dict)
-def serialize_dict(data):
+def serialize_dict(data: dict) -> dict:
     if all(isinstance(k, str) for k in data):
         return {k: serialize(v) for k, v in data.items()}
     else:
@@ -126,89 +133,84 @@ def serialize_dict(data):
 
 
 @serialize.register(set)
-def serialize_set(data):
+def serialize_set(data: set) -> dict:
     return {"py/set": [serialize(val) for val in data]}
 
 
 @serialize.register(frozenset)
-def serialize_frozenset(data):
+def serialize_frozenset(data: frozenset) -> dict:
     return {"py/frozenset": [serialize(val) for val in data]}
 
 
 @serialize.register(bytes)
-def serialize_bytes(data):
+def serialize_bytes(data: bytes) -> dict:
     return {"py/bytes": base64.b64encode(data).decode("ascii")}
 
 
 @serialize.register(bytearray)
-def serialize_bytearray(data):
+def serialize_bytearray(data: bytearray) -> dict:
     return {"py/bytearray": base64.b64encode(data).decode("ascii")}
 
 
 @serialize.register(slice)
-def serialize_slice(data):
+def serialize_slice(data: slice) -> dict:
     return {"py/slice": {"start": data.start, "stop": data.stop, "step": data.step}}
 
 
 @serialize.register(datetime.datetime)
-def serialize_datetime(data):
+def serialize_datetime(data: datetime.datetime) -> dict:
     return {"py/datetime.datetime": data.isoformat()}
 
 
 @serialize.register(datetime.date)
-def serialize_date(data):
+def serialize_date(data: datetime.date) -> dict:
     return {"py/datetime.date": data.isoformat()}
 
 
-# --- Restore functions ---
-
-
-def restore_python_float(dct):
+def restore_python_float(dct: dict) -> float:
     value = dct["py/float"]
     if value == "nan":
         return float("nan")
     elif value == "inf":
         return float("inf")
-    elif value == "-inf":
-        return float("-inf")
     else:
-        return float(value)
+        return float("-inf")
 
 
-def restore_namedtuple(dct):
+def restore_namedtuple(dct: dict) -> tuple:
     data = dct["py/collections.namedtuple"]
     return namedtuple(data["type"], data["fields"])(*data["values"])
 
 
-def restore_bytes(dct):
+def restore_bytes(dct: dict) -> bytes:
     return base64.b64decode(dct["py/bytes"])
 
 
-def restore_bytearray(dct):
+def restore_bytearray(dct: dict) -> bytearray:
     return bytearray(base64.b64decode(dct["py/bytearray"]))
 
 
-def restore_frozenset(dct):
+def restore_frozenset(dct: dict) -> frozenset:
     return frozenset(dct["py/frozenset"])
 
 
-def restore_slice(dct):
+def restore_slice(dct: dict) -> slice:
     data = dct["py/slice"]
     return slice(data["start"], data["stop"], data["step"])
 
 
-def restore_datetime(dct):
+def restore_datetime(dct: dict) -> datetime.datetime:
     return datetime.datetime.fromisoformat(dct["py/datetime.datetime"])
 
 
-def restore_date(dct):
+def restore_date(dct: dict) -> datetime.date:
     return datetime.date.fromisoformat(dct["py/datetime.date"])
 
 
 # Populated by the type-specific dispatch modules on import.
-RESTORE_FUNCTION_FACTORY: dict = {
+RESTORE_FUNCTION_FACTORY: dict[str, Callable[[dict], Any]] = {
     "py/float": restore_python_float,
-    "py/dict": lambda dct: dict(dct["py/dict"]),
+    "py/dict": lambda dct: {restore(k): restore(v) for k, v in dct["py/dict"]},
     "py/tuple": lambda dct: tuple(dct["py/tuple"]),
     "py/set": lambda dct: set(dct["py/set"]),
     "py/frozenset": restore_frozenset,
@@ -222,16 +224,39 @@ RESTORE_FUNCTION_FACTORY: dict = {
 }
 
 
-def restore(dct):
+def restore(dct: Any) -> Any:
+    if not isinstance(dct, dict):
+        return dct
     for key in RESTORE_FUNCTION_FACTORY:
         if key in dct:
             return RESTORE_FUNCTION_FACTORY[key](dct)
     return dct
 
 
-def data_to_json(data) -> str:
+def data_to_json(data: Any) -> str:
+    """Serialize *data* to a JSON string.
+
+    Supports all Python, NumPy, SciPy, pandas, and sklearn types registered
+    with the serialize dispatcher, including fitted estimators and pipelines.
+    The result is a self-contained JSON string that can be restored losslessly
+    with json_to_data.
+
+    Example
+    -------
+    >>> from sklearn.preprocessing import StandardScaler
+    >>> scaler = StandardScaler().fit([[1], [2], [3]])
+    >>> restored = json_to_data(data_to_json(scaler))
+    >>> restored.mean_
+    array([2.])
+    """
     return json.dumps(serialize(data))
 
 
-def json_to_data(s: str):
+def json_to_data(s: str) -> Any:
+    """Restore an object from a JSON string produced by data_to_json.
+
+    Raises ValueError if the JSON references a class from an untrusted module.
+    Call trust_module() before deserializing objects from custom packages.
+    Only call this on JSON you produced yourself or received from a trusted source.
+    """
     return json.loads(s, object_hook=restore)
