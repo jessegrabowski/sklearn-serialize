@@ -214,12 +214,36 @@ class TestPandasSeries:
     def test_none_name_preserved(self):
         assert roundtrip(pd.Series([1, 2, 3])).name is None
 
+    def test_integer_name(self):
+        # np.int64 names are not JSON-serializable without going through serialize()
+        s = pd.Series([1, 2, 3], name=np.int64(5))
+        assert roundtrip(s).name == np.int64(5)
+
+    def test_tuple_name(self):
+        # tuple names appear in MultiIndex-derived Series; must not become a list
+        s = pd.Series([1, 2, 3], name=(0, "level1"))
+        result = roundtrip(s)
+        assert result.name == (0, "level1")
+        assert isinstance(result.name, tuple)
+
 
 class TestPandasDataFrame:
     def test_mixed_dtypes_with_nan(self):
         df = pd.DataFrame({"int_col": [1, 2, 3], "float_col": [1.0, float("nan"), 3.0]})
         # check_dtype=False: pandas 3 infers all-integer float columns as int64
         pd.testing.assert_frame_equal(roundtrip(df), df, check_dtype=False)
+
+    def test_datetime_columns_preserved(self):
+        df = pd.DataFrame(
+            {
+                "date": pd.to_datetime(["2021-01-01", "2021-06-15", "2022-03-10"]),
+                "val": [1.0, 2.0, 3.0],
+            }
+        )
+        result = roundtrip(df)
+        # check_dtype=False: pandas 3 infers integer-valued float columns as int64
+        pd.testing.assert_frame_equal(result, df, check_dtype=False)
+        assert result["date"].dtype == df["date"].dtype
 
     def test_categorical_columns_preserved(self):
         df = pd.DataFrame({"cat": pd.Categorical(["a", "b", "a"], categories=["a", "b", "c"])})
