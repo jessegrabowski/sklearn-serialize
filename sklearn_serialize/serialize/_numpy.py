@@ -17,17 +17,17 @@ def serialize_ndarray(data):
 
 @serialize.register(np.integer)
 def serialize_np_integer(data):
-    return {"py/numpy.int": int(data)}
+    return {"py/numpy.int": int(data), "dtype": type(data).__name__}
 
 
 @serialize.register(np.floating)
 def serialize_np_float(data):
     if np.isnan(data):
-        return {"py/numpy.float": "nan"}
+        return {"py/numpy.float": "nan", "dtype": type(data).__name__}
     elif np.isinf(data):
-        return {"py/numpy.float": "inf" if data > 0 else "-inf"}
+        return {"py/numpy.float": "inf" if data > 0 else "-inf", "dtype": type(data).__name__}
     else:
-        return {"py/numpy.float": data.item().hex()}
+        return {"py/numpy.float": data.item().hex(), "dtype": type(data).__name__}
 
 
 @serialize.register(type)
@@ -57,7 +57,8 @@ def restore_ndarray(dct):
 
 
 def restore_numpy_int(dct):
-    return np.int64(dct["py/numpy.int"])
+    dtype = getattr(np, dct.get("dtype", "int64"))
+    return dtype(dct["py/numpy.int"])
 
 
 def restore_numpy_float(dct):
