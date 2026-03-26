@@ -163,18 +163,9 @@ def test_categorical_transformer(estimator, categorical_X):
         LinearRegression(),
         Ridge(alpha=1.0),
         Lasso(alpha=0.01),
-        pytest.param(
-            DecisionTreeRegressor(max_depth=3, random_state=42),
-            marks=pytest.mark.xfail(strict=True, reason="known gap: sklearn Tree C extension is not serializable"),
-        ),
-        pytest.param(
-            RandomForestRegressor(n_estimators=10, random_state=42),
-            marks=pytest.mark.xfail(strict=True, reason="known gap: sklearn Tree C extension is not serializable"),
-        ),
-        pytest.param(
-            GradientBoostingRegressor(n_estimators=10, random_state=42),
-            marks=pytest.mark.xfail(strict=True, reason="known gap: sklearn Tree C extension is not serializable"),
-        ),
+        DecisionTreeRegressor(max_depth=3, random_state=42),
+        RandomForestRegressor(n_estimators=10, random_state=42),
+        GradientBoostingRegressor(n_estimators=10, random_state=42),
     ],
     ids=[
         "LinearRegression",
@@ -194,14 +185,8 @@ def test_regressor(estimator, regression_Xy):
     "estimator",
     [
         LogisticRegression(max_iter=500, random_state=42),
-        pytest.param(
-            DecisionTreeClassifier(max_depth=3, random_state=42),
-            marks=pytest.mark.xfail(strict=True, reason="known gap: sklearn Tree C extension is not serializable"),
-        ),
-        pytest.param(
-            RandomForestClassifier(n_estimators=10, random_state=42),
-            marks=pytest.mark.xfail(strict=True, reason="known gap: sklearn Tree C extension is not serializable"),
-        ),
+        DecisionTreeClassifier(max_depth=3, random_state=42),
+        RandomForestClassifier(n_estimators=10, random_state=42),
     ],
     ids=[
         "LogisticRegression",
