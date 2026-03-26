@@ -40,7 +40,9 @@ class TestBytes:
     def test_utf8_roundtrip(self):
         assert roundtrip(b"hello world") == b"hello world"
 
-    @pytest.mark.xfail(strict=True, reason="known bug: non-UTF8 bytes decoded with errors='replace', corrupting arbitrary binary data")
+    @pytest.mark.xfail(
+        strict=True, reason="known bug: non-UTF8 bytes decoded with errors='replace', corrupting arbitrary binary data"
+    )
     def test_binary_roundtrip(self):
         assert roundtrip(bytes([0xFF, 0xFE, 0x00])) == bytes([0xFF, 0xFE, 0x00])
 
@@ -116,7 +118,9 @@ class TestNumpyFloat:
         assert roundtrip(np.float64("inf")) == np.float64("inf")
         assert roundtrip(np.float64("-inf")) == np.float64("-inf")
 
-    @pytest.mark.xfail(strict=True, reason="known bug: serializer never writes 'dtype' key, all np.floating restored as float64")
+    @pytest.mark.xfail(
+        strict=True, reason="known bug: serializer never writes 'dtype' key, all np.floating restored as float64"
+    )
     def test_float32_dtype_preserved(self):
         assert type(roundtrip(np.float32(1.5))) is np.float32
 
@@ -264,9 +268,7 @@ class TestPipeline:
 
     def test_fitted_pipeline_produces_identical_predictions(self):
         X = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])
-        pipe = Pipeline([("scaler", StandardScaler()), ("lr", LinearRegression())]).fit(
-            X, np.array([1.0, 2.0, 3.0])
-        )
+        pipe = Pipeline([("scaler", StandardScaler()), ("lr", LinearRegression())]).fit(X, np.array([1.0, 2.0, 3.0]))
         np.testing.assert_array_almost_equal(roundtrip(pipe).predict(X), pipe.predict(X))
 
 
