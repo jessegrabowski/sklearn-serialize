@@ -71,6 +71,21 @@ class TestOrderedDict:
         assert list(result.items()) == [("z", 1), ("a", 2), ("m", 3)]
 
 
+class TestNonStringKeyedDict:
+    def test_tuple_key_restored(self):
+        # tuple keys go through serialize(); without restore() on the key they come back as lists
+        d = {(1, 2): "value"}
+        result = roundtrip(d)
+        assert result == {(1, 2): "value"}
+        assert isinstance(next(iter(result)), tuple)
+
+    def test_complex_value_restored(self):
+        # values also need restore(); use a non-string key to force the py/dict path
+        result = roundtrip({1: np.int64(42)})
+        assert isinstance(result[1], np.integer)
+        assert result[1] == 42
+
+
 class TestSet:
     def test_roundtrip_as_set_not_list(self):
         result = roundtrip({1, 2, 3})
