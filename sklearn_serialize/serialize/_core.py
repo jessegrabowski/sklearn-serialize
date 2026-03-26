@@ -157,6 +157,11 @@ def serialize_slice(data: slice) -> dict:
     return {"py/slice": {"start": data.start, "stop": data.stop, "step": data.step}}
 
 
+@serialize.register(complex)
+def serialize_complex(data: complex) -> dict:
+    return {"py/complex": {"real": serialize(data.real), "imag": serialize(data.imag)}}
+
+
 @serialize.register(datetime.datetime)
 def serialize_datetime(data: datetime.datetime) -> dict:
     return {"py/datetime.datetime": data.isoformat()}
@@ -210,6 +215,7 @@ def restore_date(dct: dict) -> datetime.date:
 # Populated by the type-specific dispatch modules on import.
 RESTORE_FUNCTION_FACTORY: dict[str, Callable[[dict], Any]] = {
     "py/float": restore_python_float,
+    "py/complex": lambda dct: complex(dct["py/complex"]["real"], dct["py/complex"]["imag"]),
     "py/dict": lambda dct: {restore(k): restore(v) for k, v in dct["py/dict"]},
     "py/tuple": lambda dct: tuple(dct["py/tuple"]),
     "py/set": lambda dct: set(dct["py/set"]),
