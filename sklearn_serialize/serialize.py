@@ -278,32 +278,22 @@ def serialize_make_column_selector(selector):
 
 @serialize.register(FeatureUnion)
 def serialize_feature_union(fu):
-    transformer_list = []
-    for name, transformer in fu.transformer_list:
-        transformer_list.append((name, serialize(transformer)))
-
     params = fu.get_params(deep=False)
     data = {
         "class": fu.__class__.__name__,
         "module": fu.__class__.__module__,
         "params": serialize(params),
-        "transformer_list": transformer_list,
     }
     return {"py/sklearn.FeatureUnion": data}
 
 
 @serialize.register(Pipeline)
 def serialize_pipeline(pipeline):
-    steps = []
-    for name, estimator in pipeline.steps:
-        steps.append((name, serialize(estimator)))
-
     params = pipeline.get_params(deep=False)
     data = {
         "class": pipeline.__class__.__name__,
         "module": pipeline.__class__.__module__,
         "params": serialize(params),
-        "steps": steps,
     }
     return {"py/sklearn.Pipeline": data}
 
