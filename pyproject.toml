@@ -51,4 +51,4 @@ ignore = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--cov=sklearn_serialize --cov-report=term-missing"
+addopts = "--cov=sklearn_serialize --cov-report=term-missing --cov-report=xml"
