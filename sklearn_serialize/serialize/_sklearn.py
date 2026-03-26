@@ -1,3 +1,5 @@
+from typing import Any
+
 from sklearn.base import BaseEstimator
 from sklearn.compose import ColumnTransformer, make_column_selector
 from sklearn.pipeline import FeatureUnion, Pipeline
@@ -6,7 +8,7 @@ from ._core import RESTORE_FUNCTION_FACTORY, _check_trusted, restore, serialize
 
 
 @serialize.register(BaseEstimator)
-def serialize_sklearn_estimator(estimator):
+def serialize_sklearn_estimator(estimator: BaseEstimator) -> dict:
     params = estimator.get_params(deep=False)
     attributes = {k: v for k, v in estimator.__dict__.items() if not callable(v)}
     return {
@@ -20,7 +22,7 @@ def serialize_sklearn_estimator(estimator):
 
 
 @serialize.register(ColumnTransformer)
-def serialize_column_transformer(ct):
+def serialize_column_transformer(ct: ColumnTransformer) -> dict:
     params = ct.get_params(deep=False)
     attributes = {
         k: v
@@ -38,7 +40,7 @@ def serialize_column_transformer(ct):
 
 
 @serialize.register(make_column_selector)
-def serialize_make_column_selector(selector):
+def serialize_make_column_selector(selector: make_column_selector) -> dict:
     return {
         "py/sklearn.make_column_selector": {
             "class": selector.__class__.__name__,
@@ -49,7 +51,7 @@ def serialize_make_column_selector(selector):
 
 
 @serialize.register(FeatureUnion)
-def serialize_feature_union(fu):
+def serialize_feature_union(fu: FeatureUnion) -> dict:
     params = fu.get_params(deep=False)
     return {
         "py/sklearn.FeatureUnion": {
@@ -61,7 +63,7 @@ def serialize_feature_union(fu):
 
 
 @serialize.register(Pipeline)
-def serialize_pipeline(pipeline):
+def serialize_pipeline(pipeline: Pipeline) -> dict:
     params = pipeline.get_params(deep=False)
     return {
         "py/sklearn.Pipeline": {
@@ -72,13 +74,13 @@ def serialize_pipeline(pipeline):
     }
 
 
-def _import_class(module_name, class_name):
+def _import_class(module_name: str, class_name: str) -> type:
     _check_trusted(module_name)
     module = __import__(module_name, fromlist=[class_name])
     return getattr(module, class_name)
 
 
-def restore_sklearn_estimator(dct):
+def restore_sklearn_estimator(dct: dict) -> BaseEstimator:
     data = dct["py/sklearn_estimator"]
     cls = _import_class(data["module"], data["class"])
     params = restore(data["params"])
@@ -89,7 +91,7 @@ def restore_sklearn_estimator(dct):
     return estimator
 
 
-def restore_column_transformer(dct):
+def restore_column_transformer(dct: dict) -> ColumnTransformer:
     data = dct["py/sklearn.ColumnTransformer"]
     cls = _import_class(data["module"], data["class"])
     params = restore(data["params"])
@@ -100,19 +102,19 @@ def restore_column_transformer(dct):
     return ct
 
 
-def restore_make_column_selector(dct):
+def restore_make_column_selector(dct: dict) -> Any:
     data = dct["py/sklearn.make_column_selector"]
     cls = _import_class(data["module"], data["class"])
     return cls(**restore(data["params"]))
 
 
-def restore_feature_union(dct):
+def restore_feature_union(dct: dict) -> FeatureUnion:
     data = dct["py/sklearn.FeatureUnion"]
     cls = _import_class(data["module"], data["class"])
     return cls(**restore(data["params"]))
 
 
-def restore_pipeline(dct):
+def restore_pipeline(dct: dict) -> Pipeline:
     data = dct["py/sklearn.Pipeline"]
     cls = _import_class(data["module"], data["class"])
     return cls(**restore(data["params"]))
