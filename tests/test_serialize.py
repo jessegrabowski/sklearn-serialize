@@ -1,11 +1,5 @@
-"""
-Round-trip tests: serialize → JSON string → restore must reproduce the original value.
-
-Tests marked xfail document known bugs from the code audit. Remove the xfail
-mark when the corresponding bug is fixed.
-"""
-
 import datetime
+import math
 from collections import OrderedDict, namedtuple
 
 import numpy as np
@@ -149,6 +143,49 @@ class TestNumpyType:
         # restore falls back to getattr(np, name) which handles all np.generic subclasses.
         assert roundtrip(np.integer) is np.integer
         assert roundtrip(np.floating) is np.floating
+
+
+class TestComplex:
+    def test_roundtrip(self):
+        assert roundtrip(1 + 2j) == 1 + 2j
+
+    def test_nan_inf(self):
+        val = complex(float("nan"), float("inf"))
+        result = roundtrip(val)
+        assert isinstance(result, complex)
+        assert math.isnan(result.real) and math.isinf(result.imag)
+
+
+class TestNumpyComplex:
+    def test_scalar_roundtrip(self):
+        val = np.complex128(3.14 + 2.72j)
+        result = roundtrip(val)
+        assert result == val
+        assert type(result) is np.complex128
+
+    def test_complex64_dtype_preserved(self):
+        val = np.complex64(1.0 + 2.0j)
+        assert type(roundtrip(val)) is np.complex64
+
+    def test_scalar_nan_inf(self):
+        val = np.complex128(complex(float("nan"), float("inf")))
+        result = roundtrip(val)
+        assert np.isnan(result.real)
+        assert np.isinf(result.imag)
+
+    def test_array_roundtrip(self):
+        a = np.array([1 + 2j, 3 + 4j, 5 + 6j], dtype=np.complex128)
+        np.testing.assert_array_equal(roundtrip(a), a)
+
+    def test_array_dtype_preserved(self):
+        a = np.array([1 + 2j], dtype=np.complex64)
+        assert roundtrip(a).dtype == np.complex64
+
+    def test_2d_array_shape_preserved(self):
+        a = np.array([[1 + 2j, 3 + 4j], [5 + 6j, 7 + 8j]])
+        result = roundtrip(a)
+        assert result.shape == (2, 2)
+        np.testing.assert_array_equal(result, a)
 
 
 class TestNumpyArray:
