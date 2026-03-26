@@ -1,6 +1,7 @@
 from typing import Any
 
 import numpy as np
+from numpy.random import RandomState
 
 from ._core import RESTORE_FUNCTION_FACTORY, _check_trusted, restore, serialize
 
@@ -97,6 +98,17 @@ def restore_np_datetime64(dct: dict) -> np.datetime64:
     return np.datetime64(dct["py/numpy.datetime64"])
 
 
+@serialize.register(RandomState)
+def serialize_random_state(data: RandomState) -> dict:
+    return {"py/numpy.RandomState": serialize(data.__getstate__())}
+
+
+def restore_random_state(dct: dict) -> RandomState:
+    rs = RandomState()
+    rs.__setstate__(dct["py/numpy.RandomState"])
+    return rs
+
+
 RESTORE_FUNCTION_FACTORY.update(
     {
         "py/numpy.ndarray": restore_ndarray,
@@ -105,5 +117,6 @@ RESTORE_FUNCTION_FACTORY.update(
         "py/numpy.type": restore_numpy_type,
         "py/type": restore_type,
         "py/numpy.datetime64": restore_np_datetime64,
+        "py/numpy.RandomState": restore_random_state,
     }
 )

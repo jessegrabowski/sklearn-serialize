@@ -172,6 +172,14 @@ class TestNumpyArray:
         np.testing.assert_array_equal(result, a)
 
 
+class TestRandomState:
+    def test_state_preserved_after_roundtrip(self):
+        rng = np.random.RandomState(42)
+        rng.random(10)  # advance past the seed so we test serialised mid-stream state
+        restored = roundtrip(rng)
+        assert restored.random() == rng.random()
+
+
 class TestDatetime:
     def test_date(self):
         assert roundtrip(datetime.date(2021, 6, 15)) == datetime.date(2021, 6, 15)
