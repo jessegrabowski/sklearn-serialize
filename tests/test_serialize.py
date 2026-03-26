@@ -41,9 +41,6 @@ class TestBytes:
     def test_utf8_roundtrip(self):
         assert roundtrip(b"hello world") == b"hello world"
 
-    @pytest.mark.xfail(
-        strict=True, reason="known bug: non-UTF8 bytes decoded with errors='replace', corrupting arbitrary binary data"
-    )
     def test_binary_roundtrip(self):
         assert roundtrip(bytes([0xFF, 0xFE, 0x00])) == bytes([0xFF, 0xFE, 0x00])
 
@@ -102,7 +99,6 @@ class TestNumpyInt:
         assert result == 42
         assert isinstance(result, np.integer)
 
-    @pytest.mark.xfail(strict=True, reason="known bug: all np.integer dtypes restored as np.int64, original dtype lost")
     def test_dtype_preserved(self):
         assert type(roundtrip(np.int32(42))) is np.int32
 
@@ -119,9 +115,6 @@ class TestNumpyFloat:
         assert roundtrip(np.float64("inf")) == np.float64("inf")
         assert roundtrip(np.float64("-inf")) == np.float64("-inf")
 
-    @pytest.mark.xfail(
-        strict=True, reason="known bug: serializer never writes 'dtype' key, all np.floating restored as float64"
-    )
     def test_float32_dtype_preserved(self):
         assert type(roundtrip(np.float32(1.5))) is np.float32
 

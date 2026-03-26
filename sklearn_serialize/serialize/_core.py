@@ -1,3 +1,4 @@
+import base64
 import datetime
 import json
 from collections import OrderedDict, namedtuple
@@ -136,12 +137,12 @@ def serialize_frozenset(data):
 
 @serialize.register(bytes)
 def serialize_bytes(data):
-    return {"py/bytes": data.decode("utf-8", errors="replace")}
+    return {"py/bytes": base64.b64encode(data).decode("ascii")}
 
 
 @serialize.register(bytearray)
 def serialize_bytearray(data):
-    return {"py/bytearray": data.decode("utf-8", errors="replace")}
+    return {"py/bytearray": base64.b64encode(data).decode("ascii")}
 
 
 @serialize.register(slice)
@@ -180,11 +181,11 @@ def restore_namedtuple(dct):
 
 
 def restore_bytes(dct):
-    return dct["py/bytes"].encode("utf-8")
+    return base64.b64decode(dct["py/bytes"])
 
 
 def restore_bytearray(dct):
-    return bytearray(dct["py/bytearray"].encode("utf-8"))
+    return bytearray(base64.b64decode(dct["py/bytearray"]))
 
 
 def restore_frozenset(dct):
