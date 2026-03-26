@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 import pytest
 from scipy import sparse
+from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.pipeline import FeatureUnion, Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
@@ -43,6 +44,9 @@ class TestBytes:
 
     def test_binary_roundtrip(self):
         assert roundtrip(bytes([0xFF, 0xFE, 0x00])) == bytes([0xFF, 0xFE, 0x00])
+
+    def test_bytearray_roundtrip(self):
+        assert roundtrip(bytearray(b"hello \x00\xff")) == bytearray(b"hello \x00\xff")
 
 
 class TestTuple:
@@ -140,6 +144,12 @@ class TestNumpyType:
         assert roundtrip(np.float32) is np.float32
         assert roundtrip(np.int64) is np.int64
 
+    def test_abstract_numpy_type_roundtrip(self):
+        # Abstract types like np.integer are not dtype-constructable (np.dtype("integer") raises);
+        # restore falls back to getattr(np, name) which handles all np.generic subclasses.
+        assert roundtrip(np.integer) is np.integer
+        assert roundtrip(np.floating) is np.floating
+
 
 class TestNumpyArray:
     def test_dtype_preserved(self):
@@ -170,6 +180,14 @@ class TestNumpyArray:
         a = np.array([1, "text", None], dtype=object)
         result = roundtrip(a)
         np.testing.assert_array_equal(result, a)
+
+
+class TestRandomState:
+    def test_state_preserved_after_roundtrip(self):
+        rng = np.random.RandomState(42)
+        rng.random(10)  # advance past the seed so we test serialised mid-stream state
+        restored = roundtrip(rng)
+        assert restored.random() == rng.random()
 
 
 class TestDatetime:
@@ -292,6 +310,14 @@ class TestSklearnEstimator:
     def test_fitted_encoder_categories_preserved(self):
         enc = OneHotEncoder(sparse_output=False).fit(np.array([["a"], ["b"], ["c"]]))
         np.testing.assert_array_equal(roundtrip(enc).categories_[0], enc.categories_[0])
+
+    def test_fitted_estimator_with_callable_attribute(self):
+        # GradientBoostingRegressor stores _loss as a callable instance; the attribute filter
+        # must include callable objects (not just data), or predict() will fail on restore.
+        X = np.array([[1.0], [2.0], [3.0], [4.0], [5.0]])
+        y = np.array([1.0, 4.0, 9.0, 16.0, 25.0])
+        gbr = GradientBoostingRegressor(n_estimators=10, random_state=42).fit(X, y)
+        np.testing.assert_array_equal(roundtrip(gbr).predict(X), gbr.predict(X))
 
 
 class TestPipeline:
