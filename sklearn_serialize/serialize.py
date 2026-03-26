@@ -183,6 +183,19 @@ def serialize_sparse_coo_matrix(data):
     }
 
 
+@serialize.register(sparse.lil_matrix)
+@serialize.register(sparse.dok_matrix)
+def serialize_sparse_dense_matrix(data):
+    # lil and dok have no .indices/.indptr; serialize via dense roundtrip
+    return {
+        "py/scipy.sparse": {
+            "format": data.getformat(),
+            "dense": serialize(data.toarray()),
+            "shape": data.shape,
+        }
+    }
+
+
 @serialize.register(sparse.spmatrix)
 def serialize_sparse_matrix(data):
     return {
@@ -404,19 +417,18 @@ def restore_sparse_matrix(dct):
     data = dct["py/scipy.sparse"]
     format = data["format"]
     shape = tuple(data["shape"])
-    data_array = restore(data["data"])
-
     constructor = sparse_format_factory.get(format)
 
     if format in ["csr", "csc"]:
-        indices = restore(data["indices"])
-        indptr = restore(data["indptr"])
-
-        matrix = constructor((data_array, indices, indptr), shape=shape)
+        matrix = constructor(
+            (restore(data["data"]), restore(data["indices"]), restore(data["indptr"])),
+            shape=shape,
+        )
     elif format == "coo":
-        row = restore(data["row"])
-        col = restore(data["col"])
-        matrix = constructor((data_array, (row, col)), shape=shape)
+        matrix = constructor(
+            (restore(data["data"]), (restore(data["row"]), restore(data["col"]))),
+            shape=shape,
+        )
     else:
         matrix = constructor(restore(data["dense"]), shape=shape)
 
