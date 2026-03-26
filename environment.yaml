@@ -1,0 +1,16 @@
+name: sklearn-serialize
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+    - python=3.12
+    - numpy
+    - pandas
+    - scipy
+    - scikit-learn
+    - pre-commit
+    - pytest
+    - pytest-cov
+    - pip
+    - pip:
+        - -e ..

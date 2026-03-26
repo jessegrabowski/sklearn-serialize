@@ -1,3 +1,3 @@
 # sklearn-serialize
 
-Serialize scikit-learn models to JSON 
+Serialize scikit-learn models to JSON
