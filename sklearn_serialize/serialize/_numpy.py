@@ -1,7 +1,7 @@
 from typing import Any
 
 import numpy as np
-from numpy.random import RandomState
+from numpy.random import Generator, RandomState
 
 from ._core import RESTORE_FUNCTION_FACTORY, _check_trusted, restore, serialize
 
@@ -132,9 +132,32 @@ def restore_np_datetime64(dct: dict) -> np.datetime64:
     return np.datetime64(dct["py/numpy.datetime64"])
 
 
+@serialize.register(np.dtype)
+def serialize_np_dtype(data: np.dtype) -> dict:
+    return {"py/numpy.dtype": str(data)}
+
+
+@serialize.register(Generator)
+def serialize_generator(data: Generator) -> dict:
+    bg = data.bit_generator
+    return {"py/numpy.Generator": {"bit_generator": type(bg).__name__, "state": bg.state}}
+
+
 @serialize.register(RandomState)
 def serialize_random_state(data: RandomState) -> dict:
     return {"py/numpy.RandomState": serialize(data.__getstate__())}
+
+
+def restore_numpy_dtype(dct: dict) -> np.dtype:
+    return np.dtype(dct["py/numpy.dtype"])
+
+
+def restore_generator(dct: dict) -> Generator:
+    data = dct["py/numpy.Generator"]
+    bg_cls = getattr(np.random, data["bit_generator"])
+    bg = bg_cls()
+    bg.state = data["state"]
+    return Generator(bg)
 
 
 def restore_random_state(dct: dict) -> RandomState:
@@ -152,6 +175,8 @@ RESTORE_FUNCTION_FACTORY.update(
         "py/numpy.type": restore_numpy_type,
         "py/type": restore_type,
         "py/numpy.datetime64": restore_np_datetime64,
+        "py/numpy.dtype": restore_numpy_dtype,
+        "py/numpy.Generator": restore_generator,
         "py/numpy.RandomState": restore_random_state,
     }
 )

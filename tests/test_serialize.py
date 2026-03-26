@@ -219,6 +219,25 @@ class TestNumpyArray:
         np.testing.assert_array_equal(result, a)
 
 
+class TestNumpyDtype:
+    def test_numeric_dtype_roundtrip(self):
+        for s in ["float64", "int32", "complex128", "bool"]:
+            assert np.dtype(s) == roundtrip(np.dtype(s))
+
+
+class TestGenerator:
+    def test_state_preserved_after_roundtrip(self):
+        rng = np.random.default_rng(42)
+        rng.random(10)
+        restored = roundtrip(rng)
+        assert restored.random() == rng.random()
+
+    def test_bit_generator_type_preserved(self):
+        rng = np.random.default_rng(42)
+        restored = roundtrip(rng)
+        assert type(restored.bit_generator) is type(rng.bit_generator)
+
+
 class TestRandomState:
     def test_state_preserved_after_roundtrip(self):
         rng = np.random.RandomState(42)
