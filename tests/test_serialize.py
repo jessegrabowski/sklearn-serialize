@@ -195,15 +195,17 @@ class TestSparse:
         assert result.format == "coo"
         np.testing.assert_array_equal(result.toarray(), m.toarray())
 
-    @pytest.mark.xfail(strict=True, reason="known bug: lil_matrix has no .indices/.indptr attributes")
     def test_lil_roundtrip(self):
         m = sparse.eye(4, format="lil")
-        np.testing.assert_array_equal(roundtrip(m).toarray(), m.toarray())
+        result = roundtrip(m)
+        assert result.format == "lil"
+        np.testing.assert_array_equal(result.toarray(), m.toarray())
 
-    @pytest.mark.xfail(strict=True, reason="known bug: dok_matrix has no .indices/.indptr attributes")
     def test_dok_roundtrip(self):
         m = sparse.eye(4, format="dok")
-        np.testing.assert_array_equal(roundtrip(m).toarray(), m.toarray())
+        result = roundtrip(m)
+        assert result.format == "dok"
+        np.testing.assert_array_equal(result.toarray(), m.toarray())
 
 
 class TestPandasSeries:
