@@ -18,7 +18,9 @@ from sklearn.preprocessing import (
 )
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
-from sklearn_serialize.serialize import data_to_json, json_to_data
+from sklearn_serialize.serialize import data_to_json, json_to_data, trust_module
+
+trust_module("tests")
 
 
 class ClampTransformer(BaseEstimator, TransformerMixin):

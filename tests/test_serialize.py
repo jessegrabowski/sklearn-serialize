@@ -16,7 +16,8 @@ from sklearn.linear_model import LinearRegression
 from sklearn.pipeline import FeatureUnion, Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
-from sklearn_serialize.serialize import data_to_json, json_to_data
+import sklearn_serialize.serialize._core as _serialize_core
+from sklearn_serialize.serialize import data_to_json, json_to_data, trust_module
 
 
 def roundtrip(data):
@@ -303,3 +304,30 @@ class TestFeatureUnion:
         fu = FeatureUnion([("scaler", StandardScaler()), ("passthrough", "passthrough")])
         result = roundtrip(fu)
         assert [name for name, _ in result.transformer_list] == ["scaler", "passthrough"]
+
+
+class TestTrustedModules:
+    @pytest.fixture(autouse=True)
+    def restore_trusted_modules(self, monkeypatch):
+        monkeypatch.setattr(_serialize_core, "_TRUSTED_MODULES", _serialize_core._TRUSTED_MODULES.copy())
+
+    def test_untrusted_module_raises(self):
+        payload = data_to_json(StandardScaler().fit([[1], [2], [3]]))
+        payload = payload.replace("sklearn.preprocessing", "malicious.package")
+        with pytest.raises(ValueError, match="malicious.package"):
+            json_to_data(payload)
+
+    def test_trust_module_allows_deserialization(self):
+        payload = data_to_json(StandardScaler().fit([[1], [2], [3]]))
+        payload = payload.replace("sklearn.preprocessing", "mycompany.transformers")
+        with pytest.raises(ValueError):
+            json_to_data(payload)
+        trust_module("mycompany")
+        # now fails with ImportError (module doesn't exist), not ValueError
+        with pytest.raises(ImportError):
+            json_to_data(payload)
+
+    def test_submodule_covered_by_prefix(self):
+        # sklearn.preprocessing.* should be covered by the "sklearn" prefix
+        scaler = StandardScaler().fit([[1], [2], [3]])
+        assert roundtrip(scaler).mean_ is not None
