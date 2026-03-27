@@ -351,6 +351,15 @@ class TestPolarsDataFrame:
         df = pl.DataFrame({"ints": [1, 2, 3], "floats": [1.0, float("nan"), 3.0]})
         assert roundtrip(df).equals(df, null_equal=True)
 
+    def test_nan_distinct_from_null(self):
+        import polars as pl
+
+        # Polars treats float NaN and null as separate concepts; both must survive the roundtrip.
+        s = pl.Series("x", [1.0, float("nan"), None, 4.0])
+        result = roundtrip(pl.DataFrame({"x": s}))["x"]
+        assert result.is_nan().to_list() == s.is_nan().to_list()
+        assert result.is_null().to_list() == s.is_null().to_list()
+
     def test_all_dtypes_preserved(self):
         import polars as pl
 
@@ -359,6 +368,20 @@ class TestPolarsDataFrame:
                 "cats": pl.Series(["x", "y", "z"]).cast(pl.Categorical),
                 "dates": pl.Series(["2021-01-01", "2021-06-15", "2022-03-10"]).str.to_date(),
                 "enums": pl.Series(["a", "b", "a"]).cast(pl.Enum(["a", "b"])),
+            }
+        )
+        result = roundtrip(df)
+        assert result.dtypes == df.dtypes
+        assert result.equals(df, null_equal=True)
+
+    def test_timezone_aware_datetime(self):
+        import polars as pl
+
+        df = pl.DataFrame(
+            {
+                "ts": pl.Series(["2021-01-01 12:00:00", "2021-06-15 00:00:00"])
+                .str.to_datetime()
+                .dt.convert_time_zone("Europe/London")
             }
         )
         result = roundtrip(df)
