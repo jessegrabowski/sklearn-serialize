@@ -20,10 +20,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+polars = ["polars"]
 dev = [
     "pytest",
     "pytest-cov",
     "pre-commit",
+    "polars",
 ]
 
 [tool.hatch.version]
