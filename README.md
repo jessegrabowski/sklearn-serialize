@@ -20,10 +20,11 @@ pip install sklearn-serialize
 ## Supported types
 
 - **sklearn**: `Pipeline`, `FeatureUnion`, `ColumnTransformer`, and any `BaseEstimator` subclass
-- **NumPy**: `ndarray`, scalar integer/float types, `datetime64`
+- **NumPy**: `ndarray`, scalar integer/float/complex types, `datetime64`, `dtype`, `Generator`, `RandomState`
 - **SciPy**: sparse matrices (`csr`, `csc`, `coo`, `lil`, `dok`)
-- **pandas**: `Series`, `DataFrame` (including categorical and datetime columns)
-- **Python**: `tuple`, `set`, `frozenset`, `bytes`, `slice`, `OrderedDict`, `namedtuple`, `datetime`
+- **pandas**: `Series`, `DataFrame`
+- **polars**: `Series`, `DataFrame` (optional — requires `polars` to be installed)
+- **Python**: `tuple`, `set`, `frozenset`, `bytes`, `bytearray`, `slice`, `complex`, `OrderedDict`, `namedtuple`, `datetime`, `date`
 
 ## Custom estimators
 
